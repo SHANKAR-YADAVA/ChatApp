@@ -5,6 +5,7 @@ import GroupChatHeader from "./GroupChatHeader";
 import MessageInput from "./MessageInput";
 import MessageSkeleton from "./skeletons/MessageSkeleton";
 import { formatMessageTime } from "../lib/utils";
+import GroupMessageInput from "./GroupMessageInput";
 
 const GroupChatContainer = () => {
   const {
@@ -90,7 +91,7 @@ const GroupChatContainer = () => {
       </div>
 
       {/* ✅ MessageInput with group send logic */}
-      <MessageInput
+      <GroupMessageInput
         isGroupChat={true}
         onSend={(messageData) => {
           console.log("Sending group message to:", selectedGroup?._id); // ✅ print

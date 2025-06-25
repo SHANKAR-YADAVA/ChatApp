@@ -6,11 +6,12 @@ import { axiosInstance } from "../lib/axios";
 import { useChatStore } from "../store/useChatStore";
 
 const CreateGroupPage = () => {
+  const DEFAULT_GROUP_ICON = "https://cdn-icons-png.flaticon.com/512/9131/9131529.png";
   const navigate = useNavigate();
   const [groupName, setGroupName] = useState("");
   const [selectedUsers, setSelectedUsers] = useState([]);
-  const [groupIcon, setGroupIcon] = useState("");
-  const [previewIcon, setPreviewIcon] = useState("");
+  const [previewIcon, setPreviewIcon] = useState(DEFAULT_GROUP_ICON);
+const [groupIcon, setGroupIcon] = useState("");
   const [uploading, setUploading] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
 
@@ -53,7 +54,7 @@ const CreateGroupPage = () => {
       await axiosInstance.post("/groups", {
         name: groupName,
         members: selectedUsers,
-        icon: groupIcon,
+        icon: groupIcon || DEFAULT_GROUP_ICON, // Use default icon if none provided
       });
 
       toast.success("Group created!");
@@ -84,8 +85,7 @@ const CreateGroupPage = () => {
           <div className="flex flex-col items-center gap-4">
             <div className="relative">
               <img
-                src={previewIcon || "/group-placeholder.png"}
-                alt="Group Icon"
+                src={previewIcon || DEFAULT_GROUP_ICON}
                 className="size-32 rounded-full object-cover border-4 border-base-200"
               />
               <label

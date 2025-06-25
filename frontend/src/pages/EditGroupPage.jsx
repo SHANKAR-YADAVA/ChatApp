@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Camera, X } from "lucide-react";
 import toast from "react-hot-toast";
 import { useChatStore } from "../store/useChatStore";
+import { useAuthStore } from "../store/useAuthStore";
 
 const EditGroupPage = () => {
   const { groupId } = useParams();
@@ -12,33 +13,31 @@ const EditGroupPage = () => {
   const [groupIcon, setGroupIcon] = useState("");
   const [previewIcon, setPreviewIcon] = useState("");
   const [uploading, setUploading] = useState(false);
-  
-  const { 
-    groups, 
-    getGroups, 
-    users, 
-    updateGroup,
-    isUpdatingGroup: isUpdating 
-  } = useChatStore();
 
-  // Initialize form with current group data
+  const { groups, getGroups, users, updateGroup, isUpdatingGroup: isUpdating } = useChatStore();
+  const { authUser } = useAuthStore();
+
+  // ✅ Initialize form with current group data
   useEffect(() => {
-    const group = groups.find(g => g._id === groupId);
+    const group = groups.find((g) => g._id === groupId);
     if (group) {
       setGroupName(group.name);
-      setSelectedUsers(group.members);
+      setSelectedUsers(group.members.map((m) => typeof m === "string" ? m : m._id));
       setPreviewIcon(group.icon || "");
     }
   }, [groupId, groups]);
 
+  // ✅ Toggle member and ensure uniqueness
   const handleUserToggle = (userId) => {
-    setSelectedUsers((prev) =>
-      prev.includes(userId) 
-        ? prev.filter((id) => id !== userId) 
-        : [...prev, userId]
-    );
+    setSelectedUsers((prev) => {
+      const updated = prev.includes(userId)
+        ? prev.filter((id) => id !== userId)
+        : [...prev, userId];
+      return [...new Set(updated)];
+    });
   };
 
+  // ✅ Handle icon upload
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -70,14 +69,14 @@ const EditGroupPage = () => {
 
     const updateData = {
       name: groupName,
-      members: selectedUsers,
-      ...(groupIcon && { icon: groupIcon }) // Only include icon if changed
+      members: [...new Set(selectedUsers)],
+      ...(groupIcon && { icon: groupIcon }),
     };
 
     const success = await updateGroup(groupId, updateData);
     if (success) {
-      navigate(`/`);
-      getGroups();
+      await getGroups();
+      navigate("/");
     }
   };
 
@@ -100,12 +99,7 @@ const EditGroupPage = () => {
               />
               <div className="absolute inset-0 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 rounded-full">
                 <label
-                  className={`
-                    p-2 rounded-full cursor-pointer 
-                    bg-primary hover:scale-105
-                    transition-all duration-200
-                    ${uploading ? "animate-pulse pointer-events-none" : ""}
-                  `}
+                  className={`p-2 rounded-full cursor-pointer bg-primary hover:scale-105 transition-all duration-200 ${uploading ? "animate-pulse pointer-events-none" : ""}`}
                 >
                   <Camera className="w-4 h-4 text-white" />
                   <input
@@ -132,7 +126,6 @@ const EditGroupPage = () => {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Group Info Section */}
             <div className="space-y-6">
               <div className="space-y-1.5">
                 <label className="text-sm text-zinc-400">Group Name</label>
@@ -150,8 +143,8 @@ const EditGroupPage = () => {
                 <label className="text-sm text-zinc-400">Group Members</label>
                 <div className="max-h-60 overflow-y-auto border rounded-lg p-2 space-y-2">
                   {users.map((user) => (
-                    <label 
-                      key={user._id} 
+                    <label
+                      key={user._id}
                       className="flex items-center justify-between p-2 hover:bg-base-200 rounded"
                     >
                       <span>{user.fullName}</span>
@@ -160,6 +153,7 @@ const EditGroupPage = () => {
                         className="checkbox checkbox-sm"
                         checked={selectedUsers.includes(user._id)}
                         onChange={() => handleUserToggle(user._id)}
+                        disabled={user._id === authUser._id}
                       />
                     </label>
                   ))}
@@ -167,7 +161,6 @@ const EditGroupPage = () => {
               </div>
             </div>
 
-            {/* Action Buttons */}
             <div className="flex justify-end gap-3 pt-4">
               <button
                 type="button"

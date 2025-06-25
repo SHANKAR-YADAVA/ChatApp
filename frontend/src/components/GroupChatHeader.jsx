@@ -21,7 +21,7 @@ const GroupChatHeader = () => {
 
   const handleClose = () => {
     setSelectedGroup(null);
-    navigate(-1);
+    navigate("/");
   };
 
   const handleEdit = () => {
