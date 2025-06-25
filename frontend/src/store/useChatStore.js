@@ -11,6 +11,7 @@ export const useChatStore = create((set, get) => ({
   selectedGroup: null,
   isUsersLoading: false,
   isMessagesLoading: false,
+  isUpdatingGroup: false,
 
   // -------- USERS --------
   getUsers: async () => {
@@ -19,7 +20,7 @@ export const useChatStore = create((set, get) => ({
       const res = await axiosInstance.get("/messages/users");
       set({ users: res.data });
     } catch (error) {
-      toast.error(error.response.data.message);
+      toast.error(error.response?.data?.message || "Failed to load users");
     } finally {
       set({ isUsersLoading: false });
     }
@@ -28,12 +29,60 @@ export const useChatStore = create((set, get) => ({
   // -------- GROUPS --------
   getGroups: async () => {
     try {
-      const res = await axiosInstance.get("/groups");
+      const res = await axiosInstance.get("/groups/get-groups");
       set({ groups: res.data });
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to load groups");
     }
   },
+
+ updateGroup: async (groupId, data) => {
+  set({ isUpdatingGroup: true });
+
+  try {
+    // Handle icon upload if it's a new base64 image
+    let iconUrl = data.icon;
+    if (data.icon && data.icon.startsWith("data:image/")) {
+      const uploadRes = await axiosInstance.post("/upload-image", {
+        image: data.icon,
+      });
+      if (uploadRes.data?.secure_url) {
+        iconUrl = uploadRes.data.secure_url;
+      } else {
+        throw new Error("Image upload failed");
+      }
+    }
+
+    // Prepare the final update data
+    const updateData = {
+      ...data,
+      ...(iconUrl && { icon: iconUrl }) // Only include if we have a URL
+    };
+
+    // Send the update request
+    const res = await axiosInstance.put(`/groups/${groupId}`, updateData);
+    const updatedGroup = res.data;
+
+    // Update both groups list and selectedGroup if it's the current one
+    set(state => ({
+      groups: state.groups.map(group => 
+        group._id === groupId ? updatedGroup : group
+      ),
+      ...(state.selectedGroup?._id === groupId && {
+        selectedGroup: updatedGroup
+      })
+    }));
+
+    toast.success("Group updated successfully");
+    return updatedGroup;
+  } catch (error) {
+    console.error("updateGroup error:", error);
+    toast.error(error.response?.data?.message || "Failed to update group");
+    return null;
+  } finally {
+    set({ isUpdatingGroup: false });
+  }
+},
 
   // -------- MESSAGES --------
   getMessages: async (userId) => {
@@ -42,7 +91,7 @@ export const useChatStore = create((set, get) => ({
       const res = await axiosInstance.get(`/messages/${userId}`);
       set({ messages: res.data });
     } catch (error) {
-      toast.error(error.response.data.message);
+      toast.error(error.response?.data?.message || "Failed to load messages");
     } finally {
       set({ isMessagesLoading: false });
     }
@@ -54,7 +103,7 @@ export const useChatStore = create((set, get) => ({
       const res = await axiosInstance.get(`/messages/group/${groupId}`);
       set({ messages: res.data });
     } catch (error) {
-      toast.error(error.response.data.message);
+      toast.error(error.response?.data?.message || "Failed to load group messages");
     } finally {
       set({ isMessagesLoading: false });
     }
@@ -67,7 +116,7 @@ export const useChatStore = create((set, get) => ({
       const res = await axiosInstance.post(`/messages/send/${selectedUser._id}`, messageData);
       set({ messages: [...messages, res.data] });
     } catch (error) {
-      toast.error(error.response.data.message);
+      toast.error(error.response?.data?.message || "Failed to send message");
     }
   },
 
@@ -91,12 +140,10 @@ export const useChatStore = create((set, get) => ({
 
     const socket = useAuthStore.getState().socket;
     socket.on("newMessage", (newMessage) => {
-      const isMessageSentFromSelectedUser = newMessage.senderId === selectedUser._id;
-      if (!isMessageSentFromSelectedUser) return;
+      const isMessageFromSelectedUser = newMessage.senderId === selectedUser._id;
+      if (!isMessageFromSelectedUser) return;
 
-      set({
-        messages: [...get().messages, newMessage],
-      });
+      set({ messages: [...get().messages, newMessage] });
     });
   },
 
@@ -105,7 +152,7 @@ export const useChatStore = create((set, get) => ({
     const socket = useAuthStore.getState().socket;
     if (!socket || !selectedGroup) return;
 
-    socket.emit("joinRoom", selectedGroup._id); // Join the group room
+    socket.emit("joinRoom", selectedGroup._id);
 
     socket.on("groupMessage", (newMessage) => {
       if (newMessage.roomId === selectedGroup._id) {
