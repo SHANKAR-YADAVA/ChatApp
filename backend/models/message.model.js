@@ -1,4 +1,3 @@
-
 import mongoose from "mongoose";
 
 const messageSchema = new mongoose.Schema(
@@ -11,14 +10,14 @@ const messageSchema = new mongoose.Schema(
     receiverId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true,
+      default: null, // Only for private chats
     },
-    text: {
-      type: String,
+    roomId: {
+      type: String, // or ObjectId if you use Group model
+      default: null, // Only for group chats
     },
-    image: {
-      type: String,
-    },
+    text: String,
+    image: String, // Optional: image URL
   },
   { timestamps: true }
 );
