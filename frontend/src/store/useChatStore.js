@@ -112,12 +112,16 @@ export const useChatStore = create((set, get) => ({
   // -------- SEND MESSAGES --------
   sendMessage: async (messageData) => {
     const { selectedUser, messages } = get();
-    try {
-      const res = await axiosInstance.post(`/messages/send/${selectedUser._id}`, messageData);
-      set({ messages: [...messages, res.data] });
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to send message");
-    }
+    console.log("Sending to user:", selectedUser);
+   try {
+  const res = await axiosInstance.post(`/messages/send/${selectedUser._id}`, messageData);
+  console.log("Message sent:", res.data); // ✅ log success
+  set({ messages: [...messages, res.data] });
+} catch (error) {
+  console.error("sendMessage error:", error); // ❗ log failure
+  toast.error(error.response?.data?.message || "Failed to send direct message");
+}
+
   },
 
   sendGroupMessage: async (messageData) => {

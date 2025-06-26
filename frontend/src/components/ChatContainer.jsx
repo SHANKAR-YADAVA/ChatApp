@@ -6,13 +6,13 @@ import MessageInput from "./MessageInput";
 import MessageSkeleton from "./skeletons/MessageSkeleton";
 import { formatMessageTime } from "../lib/utils";
 
-const GroupChatContainer = () => {
+const ChatContainer = () => {
   const {
     messages,
-    getGroupMessages,
-    selectedGroup,
+    getMessages,
+    selectedUser,
     isMessagesLoading,
-    subscribeToGroupMessages,
+    subscribeToMessages,
     unsubscribeFromMessages,
   } = useChatStore();
 
@@ -20,15 +20,15 @@ const GroupChatContainer = () => {
   const messageEndRef = useRef(null);
 
   useEffect(() => {
-    if (!selectedGroup?._id) return;
+    if (!selectedUser?._id) return;
 
-    getGroupMessages(selectedGroup._id);
-    subscribeToGroupMessages();
+    getMessages(selectedUser._id);
+    subscribeToMessages();
 
     return () => {
       unsubscribeFromMessages();
     };
-  }, [selectedGroup?._id]);
+  }, [selectedUser?._id]);
 
   useEffect(() => {
     if (messageEndRef.current && messages) {
@@ -52,28 +52,15 @@ const GroupChatContainer = () => {
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.map((message) => {
-          const isOwnMessage = message.senderId._id === authUser._id;
+          const isOwnMessage = message.senderId === authUser._id; // Note: may be a string
           return (
             <div
               key={message._id}
               className={`chat ${isOwnMessage ? "chat-end" : "chat-start"}`}
               ref={messageEndRef}
             >
-              <div className="chat-image avatar">
-                <div className="size-10 rounded-full border">
-                  <img
-                    src={message.senderId.profilePic || "/avatar.png"}
-                    alt={message.senderId.fullName}
-                  />
-                </div>
-              </div>
               <div className="chat-header mb-1">
-                {!isOwnMessage && (
-                  <span className="text-xs font-medium text-base-content mr-1">
-                    {message.senderId.fullName}
-                  </span>
-                )}
-                <time className="text-xs opacity-50 ml-1">
+                <time className="text-xs opacity-50">
                   {formatMessageTime(message.createdAt)}
                 </time>
               </div>
@@ -97,4 +84,4 @@ const GroupChatContainer = () => {
   );
 };
 
-export default GroupChatContainer;
+export default ChatContainer;

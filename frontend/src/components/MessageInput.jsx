@@ -7,11 +7,17 @@ const MessageInput = () => {
   const [text, setText] = useState("");
   const [imagePreview, setImagePreview] = useState(null);
   const fileInputRef = useRef(null);
-  const { sendMessage } = useChatStore();
+
+  const {
+    sendMessage,
+    sendGroupMessage,
+    selectedUser,
+    selectedGroup,
+  } = useChatStore();
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
-    if (!file.type.startsWith("image/")) {
+    if (!file?.type?.startsWith("image/")) {
       toast.error("Please select an image file");
       return;
     }
@@ -32,11 +38,20 @@ const MessageInput = () => {
     e.preventDefault();
     if (!text.trim() && !imagePreview) return;
 
+    const messagePayload = {
+      text: text.trim(),
+      image: imagePreview,
+    };
+
     try {
-      await sendMessage({
-        text: text.trim(),
-        image: imagePreview,
-      });
+      if (selectedUser) {
+        await sendMessage(messagePayload); // Direct message
+      } else if (selectedGroup) {
+        await sendGroupMessage(messagePayload); // Group message
+      } else {
+        toast.error("No recipient selected");
+        return;
+      }
 
       // Clear form
       setText("");
@@ -60,7 +75,7 @@ const MessageInput = () => {
             <button
               onClick={removeImage}
               className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-base-300
-              flex items-center justify-center"
+                flex items-center justify-center"
               type="button"
             >
               <X className="size-3" />
@@ -74,7 +89,14 @@ const MessageInput = () => {
           <input
             type="text"
             className="w-full input input-bordered rounded-lg input-sm sm:input-md"
-            placeholder="Type a message..."
+            placeholder={
+              selectedUser
+                ? `Message ${selectedUser.name}...`
+                : selectedGroup
+                ? `Message group ${selectedGroup.name}...`
+                : "Select a user or group"
+            }
+            disabled={!selectedUser && !selectedGroup}
             value={text}
             onChange={(e) => setText(e.target.value)}
           />
@@ -88,13 +110,15 @@ const MessageInput = () => {
 
           <button
             type="button"
-            className={`hidden sm:flex btn btn-circle
-                     ${imagePreview ? "text-emerald-500" : "text-zinc-400"}`}
+            className={`hidden sm:flex btn btn-circle ${
+              imagePreview ? "text-emerald-500" : "text-zinc-400"
+            }`}
             onClick={() => fileInputRef.current?.click()}
           >
             <Image size={20} />
           </button>
         </div>
+
         <button
           type="submit"
           className="btn btn-sm btn-circle"
@@ -106,4 +130,5 @@ const MessageInput = () => {
     </div>
   );
 };
+
 export default MessageInput;

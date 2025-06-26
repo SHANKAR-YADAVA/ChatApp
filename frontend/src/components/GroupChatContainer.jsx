@@ -5,17 +5,17 @@ import GroupChatHeader from "./GroupChatHeader";
 import MessageInput from "./MessageInput";
 import MessageSkeleton from "./skeletons/MessageSkeleton";
 import { formatMessageTime } from "../lib/utils";
-import GroupMessageInput from "./GroupMessageInput";
 
 const GroupChatContainer = () => {
   const {
     selectedGroup,
     messages,
     getGroupMessages,
-    sendGroupMessage,
     isMessagesLoading,
     subscribeToGroupMessages,
     unsubscribeFromMessages,
+    users,
+    getUsers,
   } = useChatStore();
 
   const { authUser } = useAuthStore();
@@ -24,10 +24,9 @@ const GroupChatContainer = () => {
   useEffect(() => {
     if (!selectedGroup?._id) return;
 
-    console.log("Selected Group: ", selectedGroup); // ✅ Print selected group
-
     getGroupMessages(selectedGroup._id);
     subscribeToGroupMessages();
+    getUsers(); // ✅ Fetch users for sender info if not already fetched
 
     return () => unsubscribeFromMessages();
   }, [selectedGroup]);
@@ -41,7 +40,7 @@ const GroupChatContainer = () => {
   if (isMessagesLoading) {
     return (
       <div className="flex-1 flex flex-col overflow-auto">
-        <GroupChatHeader/>
+        <GroupChatHeader />
         <MessageSkeleton />
         <MessageInput />
       </div>
@@ -53,54 +52,54 @@ const GroupChatContainer = () => {
       <GroupChatHeader />
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((message) => (
-          <div
-            key={message._id}
-            className={`chat ${message.senderId === authUser._id ? "chat-end" : "chat-start"}`}
-            ref={messageEndRef}
-          >
-            <div className="chat-image avatar">
-              <div className="size-10 rounded-full border">
-                <img
-                  src={
-                    message.senderId === authUser._id
-                      ? authUser.profilePic || "/avatar.png"
-                      : message.senderProfilePic || "/avatar.png"
-                  }
-                  alt="profile"
-                />
+        {messages.map((message) => {
+          const isOwnMessage = message.senderId === authUser._id;
+
+          // 👇 Get sender details from users list
+          const sender = isOwnMessage
+            ? authUser
+            : users.find((u) => u._id === message.senderId);
+
+          return (
+            <div
+              key={message._id}
+              className={`chat ${isOwnMessage ? "chat-end" : "chat-start"}`}
+              ref={messageEndRef}
+            >
+              <div className="chat-image avatar">
+                <div className="size-10 rounded-full border">
+                  <img
+                    src={sender?.profilePic || "/avatar.png"}
+                    alt={sender?.fullName || "User"}
+                  />
+                </div>
+              </div>
+
+              <div className="chat-header mb-1 flex items-center gap-1">
+                <span className="text-xs font-medium text-base-content">
+                  {sender?.fullName || "Unknown"}
+                </span>
+                <time className="text-xs opacity-50">
+                  {formatMessageTime(message.createdAt)}
+                </time>
+              </div>
+
+              <div className="chat-bubble flex flex-col">
+                {message.image && (
+                  <img
+                    src={message.image}
+                    alt="Attachment"
+                    className="sm:max-w-[200px] rounded-md mb-2"
+                  />
+                )}
+                {message.text && <p>{message.text}</p>}
               </div>
             </div>
-            <div className="chat-header mb-1">
-              <time className="text-xs opacity-50 ml-1">
-                {formatMessageTime(message.createdAt)}
-              </time>
-            </div>
-            <div className="chat-bubble flex flex-col">
-              {message.image && (
-                <img
-                  src={message.image}
-                  alt="Attachment"
-                  className="sm:max-w-[200px] rounded-md mb-2"
-                />
-              )}
-              {message.text && <p>{message.text}</p>}
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
-      {/* ✅ MessageInput with group send logic */}
-      <GroupMessageInput
-        isGroupChat={true}
-        onSend={(messageData) => {
-          console.log("Sending group message to:", selectedGroup?._id); // ✅ print
-          sendGroupMessage({
-            ...messageData,
-            roomId: selectedGroup._id,
-          });
-        }}
-      />
+      <MessageInput />
     </div>
   );
 };
