@@ -5,6 +5,7 @@ import GroupChatHeader from "./GroupChatHeader";
 import MessageInput from "./MessageInput";
 import MessageSkeleton from "./skeletons/MessageSkeleton";
 import { formatMessageTime } from "../lib/utils";
+import { Trash2 } from "lucide-react"; // 🗑️ Icon
 
 const GroupChatContainer = () => {
   const {
@@ -16,6 +17,7 @@ const GroupChatContainer = () => {
     unsubscribeFromMessages,
     users,
     getUsers,
+    deleteMessage, // ✅ Zustand delete
   } = useChatStore();
 
   const { authUser } = useAuthStore();
@@ -26,7 +28,7 @@ const GroupChatContainer = () => {
 
     getGroupMessages(selectedGroup._id);
     subscribeToGroupMessages();
-    getUsers(); // ✅ Fetch users for sender info if not already fetched
+    getUsers();
 
     return () => unsubscribeFromMessages();
   }, [selectedGroup]);
@@ -54,8 +56,6 @@ const GroupChatContainer = () => {
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.map((message) => {
           const isOwnMessage = message.senderId === authUser._id;
-
-          // 👇 Get sender details from users list
           const sender = isOwnMessage
             ? authUser
             : users.find((u) => u._id === message.senderId);
@@ -63,7 +63,7 @@ const GroupChatContainer = () => {
           return (
             <div
               key={message._id}
-              className={`chat ${isOwnMessage ? "chat-end" : "chat-start"}`}
+              className={`chat ${isOwnMessage ? "chat-end" : "chat-start"} relative group`}
               ref={messageEndRef}
             >
               <div className="chat-image avatar">
@@ -84,7 +84,7 @@ const GroupChatContainer = () => {
                 </time>
               </div>
 
-              <div className="chat-bubble flex flex-col">
+              <div className="chat-bubble flex flex-col relative">
                 {message.image && (
                   <img
                     src={message.image}
@@ -93,6 +93,17 @@ const GroupChatContainer = () => {
                   />
                 )}
                 {message.text && <p>{message.text}</p>}
+
+                {/* 🗑️ Delete Button (only for own messages) */}
+                {isOwnMessage && (
+                  <button
+                    onClick={() => deleteMessage(message._id)}
+                    className="absolute -top-4 right-0 p-1 text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100 transition"
+                    title="Delete message"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
               </div>
             </div>
           );

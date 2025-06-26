@@ -5,6 +5,7 @@ import ChatHeader from "./ChatHeader";
 import MessageInput from "./MessageInput";
 import MessageSkeleton from "./skeletons/MessageSkeleton";
 import { formatMessageTime } from "../lib/utils";
+import { Trash2 } from "lucide-react"; // 🗑️ delete icon
 
 const ChatContainer = () => {
   const {
@@ -14,6 +15,7 @@ const ChatContainer = () => {
     isMessagesLoading,
     subscribeToMessages,
     unsubscribeFromMessages,
+    deleteMessage, // ✅ Deletion method
   } = useChatStore();
 
   const { authUser } = useAuthStore();
@@ -52,11 +54,12 @@ const ChatContainer = () => {
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.map((message) => {
-          const isOwnMessage = message.senderId === authUser._id; // Note: may be a string
+          const isOwnMessage = message.senderId === authUser._id;
+
           return (
             <div
               key={message._id}
-              className={`chat ${isOwnMessage ? "chat-end" : "chat-start"}`}
+              className={`chat ${isOwnMessage ? "chat-end" : "chat-start"} relative group`}
               ref={messageEndRef}
             >
               <div className="chat-header mb-1">
@@ -64,7 +67,8 @@ const ChatContainer = () => {
                   {formatMessageTime(message.createdAt)}
                 </time>
               </div>
-              <div className="chat-bubble flex flex-col">
+
+              <div className="chat-bubble flex flex-col relative">
                 {message.image && (
                   <img
                     src={message.image}
@@ -73,6 +77,17 @@ const ChatContainer = () => {
                   />
                 )}
                 {message.text && <p>{message.text}</p>}
+
+                {/* 🗑️ Delete Button (only for own messages) */}
+                {isOwnMessage && (
+                  <button
+                    onClick={() => deleteMessage(message._id)}
+                    className="absolute -top-4 right-0 p-1 text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100 transition"
+                    title="Delete message"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
               </div>
             </div>
           );

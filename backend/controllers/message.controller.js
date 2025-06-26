@@ -112,5 +112,40 @@ export const getGroupMessages = async (req, res) => {
   }
 };
 
+export const deleteMessage = async (req, res) => {
+  try {
+    const { messageId } = req.params;
+    const userId = req.user._id;
+
+    const message = await Message.findById(messageId);
+
+    if (!message) {
+      return res.status(404).json({ error: "Message not found" });
+    }
+
+    // Check if the logged-in user is the sender
+    if (message.senderId.toString() !== userId.toString()) {
+      return res.status(403).json({ error: "You can delete only your own messages" });
+    }
+
+    await message.deleteOne();
+
+    const receiverSocketId = message.receiverId ? getReceiverSocketId(message.receiverId.toString()) : null;
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit("messageDeleted", { messageId });
+    }
+
+    if (message.roomId) {
+      io.to(message.roomId).emit("messageDeleted", { messageId });
+    }
+
+    res.status(200).json({ message: "Message deleted", messageId });
+  } catch (error) {
+    console.error("Error in deleteMessage: ", error.message);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+
 
 

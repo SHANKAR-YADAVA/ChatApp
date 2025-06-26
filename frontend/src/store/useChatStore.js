@@ -35,42 +35,20 @@ export const useChatStore = create((set, get) => ({
       toast.error(error.response?.data?.message || "Failed to load groups");
     }
   },
-
- updateGroup: async (groupId, data) => {
+updateGroup: async (groupId, data) => {
   set({ isUpdatingGroup: true });
 
   try {
-    // Handle icon upload if it's a new base64 image
-    let iconUrl = data.icon;
-    if (data.icon && data.icon.startsWith("data:image/")) {
-      const uploadRes = await axiosInstance.post("/upload-image", {
-        image: data.icon,
-      });
-      if (uploadRes.data?.secure_url) {
-        iconUrl = uploadRes.data.secure_url;
-      } else {
-        throw new Error("Image upload failed");
-      }
-    }
-
-    // Prepare the final update data
-    const updateData = {
-      ...data,
-      ...(iconUrl && { icon: iconUrl }) // Only include if we have a URL
-    };
-
-    // Send the update request
-    const res = await axiosInstance.put(`/groups/${groupId}`, updateData);
+    const res = await axiosInstance.put(`/groups/${groupId}`, data); // ✅ Send base64 icon directly
     const updatedGroup = res.data;
 
-    // Update both groups list and selectedGroup if it's the current one
-    set(state => ({
-      groups: state.groups.map(group => 
+    set((state) => ({
+      groups: state.groups.map((group) =>
         group._id === groupId ? updatedGroup : group
       ),
       ...(state.selectedGroup?._id === groupId && {
-        selectedGroup: updatedGroup
-      })
+        selectedGroup: updatedGroup,
+      }),
     }));
 
     toast.success("Group updated successfully");
@@ -112,16 +90,13 @@ export const useChatStore = create((set, get) => ({
   // -------- SEND MESSAGES --------
   sendMessage: async (messageData) => {
     const { selectedUser, messages } = get();
-    console.log("Sending to user:", selectedUser);
-   try {
-  const res = await axiosInstance.post(`/messages/send/${selectedUser._id}`, messageData);
-  console.log("Message sent:", res.data); // ✅ log success
-  set({ messages: [...messages, res.data] });
-} catch (error) {
-  console.error("sendMessage error:", error); // ❗ log failure
-  toast.error(error.response?.data?.message || "Failed to send direct message");
-}
-
+    try {
+      const res = await axiosInstance.post(`/messages/send/${selectedUser._id}`, messageData);
+      set({ messages: [...messages, res.data] });
+    } catch (error) {
+      console.error("sendMessage error:", error);
+      toast.error(error.response?.data?.message || "Failed to send direct message");
+    }
   },
 
   sendGroupMessage: async (messageData) => {
@@ -137,17 +112,37 @@ export const useChatStore = create((set, get) => ({
     }
   },
 
+  // -------- DELETE MESSAGE --------
+  deleteMessage: async (messageId) => {
+    try {
+      await axiosInstance.delete(`/messages/delete/${messageId}`);
+      set((state) => ({
+        messages: state.messages.filter((msg) => msg._id !== messageId),
+      }));
+      toast.success("Message deleted");
+    } catch (error) {
+      console.error("deleteMessage error:", error);
+      toast.error(error.response?.data?.message || "Failed to delete message");
+    }
+  },
+
   // -------- SUBSCRIBE SOCKET --------
   subscribeToMessages: () => {
     const { selectedUser } = get();
     if (!selectedUser) return;
 
     const socket = useAuthStore.getState().socket;
+
     socket.on("newMessage", (newMessage) => {
       const isMessageFromSelectedUser = newMessage.senderId === selectedUser._id;
       if (!isMessageFromSelectedUser) return;
-
       set({ messages: [...get().messages, newMessage] });
+    });
+
+    socket.on("messageDeleted", ({ messageId }) => {
+      set((state) => ({
+        messages: state.messages.filter((msg) => msg._id !== messageId),
+      }));
     });
   },
 
@@ -163,12 +158,19 @@ export const useChatStore = create((set, get) => ({
         set({ messages: [...get().messages, newMessage] });
       }
     });
+
+    socket.on("messageDeleted", ({ messageId }) => {
+      set((state) => ({
+        messages: state.messages.filter((msg) => msg._id !== messageId),
+      }));
+    });
   },
 
   unsubscribeFromMessages: () => {
     const socket = useAuthStore.getState().socket;
     socket.off("newMessage");
     socket.off("groupMessage");
+    socket.off("messageDeleted");
   },
 
   // -------- SELECTORS --------

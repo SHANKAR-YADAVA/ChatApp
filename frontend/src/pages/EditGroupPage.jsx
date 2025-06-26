@@ -5,6 +5,8 @@ import toast from "react-hot-toast";
 import { useChatStore } from "../store/useChatStore";
 import { useAuthStore } from "../store/useAuthStore";
 
+const DEFAULT_GROUP_ICON = "https://cdn-icons-png.flaticon.com/512/9131/9131529.png";
+
 const EditGroupPage = () => {
   const { groupId } = useParams();
   const navigate = useNavigate();
@@ -17,17 +19,15 @@ const EditGroupPage = () => {
   const { groups, getGroups, users, updateGroup, isUpdatingGroup: isUpdating } = useChatStore();
   const { authUser } = useAuthStore();
 
-  // ✅ Initialize form with current group data
   useEffect(() => {
     const group = groups.find((g) => g._id === groupId);
     if (group) {
       setGroupName(group.name);
       setSelectedUsers(group.members.map((m) => typeof m === "string" ? m : m._id));
-      setPreviewIcon(group.icon || "");
+      setPreviewIcon(group.icon || DEFAULT_GROUP_ICON);
     }
   }, [groupId, groups]);
 
-  // ✅ Toggle member and ensure uniqueness
   const handleUserToggle = (userId) => {
     setSelectedUsers((prev) => {
       const updated = prev.includes(userId)
@@ -37,7 +37,6 @@ const EditGroupPage = () => {
     });
   };
 
-  // ✅ Handle icon upload
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -56,7 +55,7 @@ const EditGroupPage = () => {
 
   const handleRemoveIcon = () => {
     setGroupIcon("");
-    setPreviewIcon("");
+    setPreviewIcon(DEFAULT_GROUP_ICON);
   };
 
   const handleSubmit = async (e) => {
@@ -70,7 +69,7 @@ const EditGroupPage = () => {
     const updateData = {
       name: groupName,
       members: [...new Set(selectedUsers)],
-      ...(groupIcon && { icon: groupIcon }),
+      icon: groupIcon || previewIcon || DEFAULT_GROUP_ICON,
     };
 
     const success = await updateGroup(groupId, updateData);
@@ -89,12 +88,10 @@ const EditGroupPage = () => {
             <p className="mt-2">Update your group information</p>
           </div>
 
-          {/* Group Photo Section */}
           <div className="flex flex-col items-center gap-4">
             <div className="relative group">
               <img
-                src={previewIcon || "/group-placeholder.png"}
-                alt="Group Icon"
+                src={previewIcon || DEFAULT_GROUP_ICON}
                 className="size-32 rounded-full object-cover border-4 border-base-200"
               />
               <div className="absolute inset-0 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 rounded-full">
@@ -110,7 +107,7 @@ const EditGroupPage = () => {
                     disabled={uploading}
                   />
                 </label>
-                {previewIcon && (
+                {previewIcon && previewIcon !== DEFAULT_GROUP_ICON && (
                   <button
                     onClick={handleRemoveIcon}
                     className="p-2 rounded-full bg-error hover:scale-105 transition-all"

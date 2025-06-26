@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAuthStore } from "../store/useAuthStore";
-import { Camera, Mail, User } from "lucide-react";
+import { Camera, Mail, User, Undo2 } from "lucide-react";
 
 const ProfilePage = () => {
   const { authUser, isUpdatingProfile, updateProfile } = useAuthStore();
@@ -17,9 +17,32 @@ const ProfilePage = () => {
     reader.onload = async () => {
       const base64Image = reader.result;
       setSelectedImg(base64Image);
+      
       await updateProfile({ profilePic: base64Image });
     };
   };
+
+const handleResetToDefault = async () => {
+  try {
+    const response = await fetch("/avatar.png"); // From public folder
+    const blob = await response.blob();
+    const file = new File([blob], "avatar.png", { type: blob.type });
+
+    // Reuse your existing handleImageUpload logic
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = async () => {
+      const base64Image = reader.result;
+      setSelectedImg(null); // Optional, or set base64Image
+      await updateProfile({ profilePic: base64Image });
+      toast.success("Profile picture set to default");
+    };
+  } catch (error) {
+    toast.error("Failed to reset profile picture");
+    console.error("Reset to default error:", error);
+  }
+};
+
 
   return (
     <div className="h-screen pt-20">
@@ -31,7 +54,6 @@ const ProfilePage = () => {
           </div>
 
           {/* avatar upload section */}
-
           <div className="flex flex-col items-center gap-4">
             <div className="relative">
               <img
@@ -63,6 +85,19 @@ const ProfilePage = () => {
             <p className="text-sm text-zinc-400">
               {isUpdatingProfile ? "Uploading..." : "Click the camera icon to update your photo"}
             </p>
+            <button
+              onClick={handleResetToDefault}
+              disabled={isUpdatingProfile || (!authUser.profilePic && !selectedImg)}
+              className={`flex items-center gap-2 text-sm px-4 py-2 rounded-lg transition-colors 
+                ${
+                  isUpdatingProfile || (!authUser.profilePic && !selectedImg)
+                    ? "text-zinc-500 cursor-not-allowed"
+                    : "text-zinc-300 hover:bg-base-200"
+                }`}
+            >
+              <Undo2 className="w-4 h-4" />
+              Reset to Default
+            </button>
           </div>
 
           <div className="space-y-6">
@@ -84,7 +119,7 @@ const ProfilePage = () => {
           </div>
 
           <div className="mt-6 bg-base-300 rounded-xl p-6">
-            <h2 className="text-lg font-medium  mb-4">Account Information</h2>
+            <h2 className="text-lg font-medium mb-4">Account Information</h2>
             <div className="space-y-3 text-sm">
               <div className="flex items-center justify-between py-2 border-b border-zinc-700">
                 <span>Member Since</span>
@@ -101,4 +136,5 @@ const ProfilePage = () => {
     </div>
   );
 };
+
 export default ProfilePage;

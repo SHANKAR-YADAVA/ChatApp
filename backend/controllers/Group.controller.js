@@ -99,19 +99,18 @@ export const updateGroup = async (req, res) => {
       group.name = name;
     }
 
-    let iconUrl = group.icon;
-    if (icon) {
-      const uploadRes = await cloudinary.uploader.upload(icon);
-      iconUrl = uploadRes.secure_url;
+    // ✅ Upload to Cloudinary only if `icon` is a base64 string
+    if (icon && icon.startsWith("data:image")) {
+      const uploadRes = await cloudinary.uploader.upload(icon, {
+        folder: "group-icons",
+      });
+      group.icon = uploadRes.secure_url;
     }
 
-    group.icon = iconUrl;
-
-    // ✅ Ensure creator is in the list and remove duplicates
+    // ✅ Update group members (ensure creator is always present)
     if (Array.isArray(members)) {
       const withCreator = [...members, userId.toString()];
-      const uniqueMembers = [...new Set(withCreator)];
-      group.members = uniqueMembers;
+      group.members = [...new Set(withCreator)];
     }
 
     await group.save();
@@ -123,4 +122,3 @@ export const updateGroup = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
-
