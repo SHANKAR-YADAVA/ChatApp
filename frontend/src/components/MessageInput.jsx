@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { useChatStore } from "../store/useChatStore";
 import { Image, Send, X, Languages } from "lucide-react";
 import toast from "react-hot-toast";
-import axios from "axios";
+import { axiosInstance } from "../lib/axios";
 
 const indianLanguages = [
   "Hindi", "Tamil", "Telugu", "Kannada", "Malayalam", "Marathi",
@@ -49,7 +49,7 @@ const MessageInput = () => {
 
     try {
       setIsTranslating(true);
-      const response = await axios.post("http://localhost:3000/api/translate", {
+      const response = await axiosInstance.post("/api/translate", {
         text: text.trim(),
         targetLang: lang,
       });
